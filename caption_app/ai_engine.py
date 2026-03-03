@@ -17,7 +17,7 @@ def generate_caption(image_path):
             print("HF_API_TOKEN missing")
             return "Caption service not configured"
 
-        API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
+        API_URL = "https://router.huggingface.co/models/Salesforce/blip-image-captioning-base"
 
         headers = {
             "Authorization": f"Bearer {HF_API_TOKEN}"
@@ -83,7 +83,7 @@ def text_to_speech(text, language='en'):
 
         mms_lang = lang_map.get(language, "eng")
 
-        API_URL = f"https://api-inference.huggingface.co/models/facebook/mms-tts-{mms_lang}"
+        API_URL = f"https://router.huggingface.co/models/facebook/mms-tts-{mms_lang}"
 
         headers = {
             "Authorization": f"Bearer {HF_API_TOKEN}"
