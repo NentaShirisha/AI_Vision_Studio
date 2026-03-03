@@ -15,26 +15,33 @@ HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
 
 
-def generate_caption(image_path):
-    """Generate image caption using HuggingFace hosted BLIP model."""
-    try:
-        print("HF_API_TOKEN:", HF_API_TOKEN)
+import base64
 
+def generate_caption(image_path):
+    try:
         if not HF_API_TOKEN:
-            print("HF_API_TOKEN is missing")
+            print("HF_API_TOKEN missing")
             return "Caption service not configured"
 
-        with open(image_path, "rb") as f:
-            image_bytes = f.read()
+        API_URL = "https://router.huggingface.co/hf-inference/models/Salesforce/blip-image-captioning-base"
 
         headers = {
-            "Authorization": f"Bearer {HF_API_TOKEN}"
+            "Authorization": f"Bearer {HF_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        # Convert image to base64
+        with open(image_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
+
+        payload = {
+            "inputs": encoded_string
         }
 
         response = requests.post(
             API_URL,
             headers=headers,
-            data=image_bytes,
+            json=payload,
             timeout=60
         )
 
@@ -46,12 +53,8 @@ def generate_caption(image_path):
 
         result = response.json()
 
-        # Expected response:
-        # [{"generated_text": "A person holding a cup"}]
         if isinstance(result, list) and "generated_text" in result[0]:
-            caption = result[0]["generated_text"]
-            print("Generated Caption:", caption)
-            return caption
+            return result[0]["generated_text"]
 
         return "No caption generated"
 
@@ -97,3 +100,4 @@ def text_to_speech(text, language='en'):
     except Exception as e:
         print("TTS error:", e)
         return None
+
