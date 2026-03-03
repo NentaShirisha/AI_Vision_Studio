@@ -1,56 +1,56 @@
 import os
 import uuid
+import torch
 import requests
+from PIL import Image
 from django.conf import settings
 from deep_translator import GoogleTranslator
-
-HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
-
-HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
-REQUEST_TIMEOUT = 60
-
+from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
 
 # =====================================================
-# IMAGE CAPTIONING (ViT-GPT2)
+# DEVICE CONFIG
+# =====================================================
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# =====================================================
+# LOAD IMAGE CAPTION MODEL (LOAD ONLY ONCE)
+# =====================================================
+
+print("Loading image captioning model...")
+
+model = VisionEncoderDecoderModel.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+feature_extractor = ViTImageProcessor.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+
+model.to(device)
+
+print("Model loaded successfully.")
+
+# =====================================================
+# IMAGE CAPTIONING (LOCAL)
 # =====================================================
 
 def generate_caption(image_path):
     try:
-        print("Step 1: Generating caption...")
+        print("Step 1: Generating caption locally...")
 
-        if not HF_API_TOKEN:
-            return "Caption service not configured"
+        image = Image.open(image_path).convert("RGB")
 
-        # ✅ Updated model
-        model_name = "nlpconnect/vit-gpt2-image-captioning"
-        api_url = f"{HF_BASE_URL}/{model_name}"
+        pixel_values = feature_extractor(images=image, return_tensors="pt").pixel_values
+        pixel_values = pixel_values.to(device)
 
-        headers = {
-            "Authorization": f"Bearer {HF_API_TOKEN}",
-            "Content-Type": "application/octet-stream",
-        }
-
-        with open(image_path, "rb") as f:
-            image_bytes = f.read()
-
-        response = requests.post(
-            api_url,
-            headers=headers,
-            data=image_bytes,
-            timeout=REQUEST_TIMEOUT
+        output_ids = model.generate(
+            pixel_values,
+            max_length=20,
+            num_beams=4
         )
 
-        if response.status_code != 200:
-            print("HF Caption API Error:", response.text)
-            return "Error generating caption"
+        caption = tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
-        result = response.json()
-        print("HF Caption Response:", result)
+        print("Generated Caption:", caption)
 
-        if isinstance(result, list) and len(result) > 0:
-            return result[0].get("generated_text", "No caption generated")
-
-        return "No caption generated"
+        return caption
 
     except Exception as e:
         print("Caption error:", str(e))
@@ -68,7 +68,14 @@ def translate_text(text, language):
         if not text or "Error" in text:
             return text
 
-        return GoogleTranslator(source='auto', target=language).translate(text)
+        translated = GoogleTranslator(
+            source='auto',
+            target=language
+        ).translate(text)
+
+        print("Translated Text:", translated)
+
+        return translated
 
     except Exception as e:
         print("Translation error:", str(e))
@@ -76,14 +83,20 @@ def translate_text(text, language):
 
 
 # =====================================================
-# TEXT TO SPEECH
+# OPTIONAL TTS (HF ROUTER - MAY REQUIRE TOKEN)
 # =====================================================
+
+HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
+HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
+REQUEST_TIMEOUT = 60
+
 
 def text_to_speech(text, language='en'):
     try:
         print("Step 3: Generating audio...")
 
         if not HF_API_TOKEN:
+            print("No HF token, skipping TTS.")
             return None
 
         if not text or "Error" in text:
@@ -116,7 +129,7 @@ def text_to_speech(text, language='en'):
         )
 
         if response.status_code != 200:
-            print("HF TTS API Error:", response.text)
+            print("TTS API Error:", response.text)
             return None
 
         audio_bytes = response.content
@@ -132,6 +145,8 @@ def text_to_speech(text, language='en'):
 
         with open(filepath, "wb") as f:
             f.write(audio_bytes)
+
+        print("Audio saved:", filename)
 
         return f"audio/{filename}"
 
