@@ -61,8 +61,12 @@ def translate_text(text, language):
 # Text to Speech
 # ==========================================
 
+import time
+
 def text_to_speech(text, language='en'):
     try:
+        time.sleep(1)  # Prevent rapid requests
+        
         filename = f"audio_{uuid.uuid4()}.mp3"
         tts = gTTS(text=text, lang=language)
 
@@ -77,4 +81,5 @@ def text_to_speech(text, language='en'):
     except Exception as e:
         print("TTS error:", e)
         return None
+
 
