@@ -1,21 +1,15 @@
 import os
 import uuid
-import time
 import requests
+import base64
 from django.conf import settings
 from deep_translator import GoogleTranslator
-from gtts import gTTS
-
-# =====================================================
-# HuggingFace Free Inference API (Correct Endpoint)
-# =====================================================
 
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 
-API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
-
-
-import base64
+# =====================================================
+# IMAGE CAPTIONING
+# =====================================================
 
 def generate_caption(image_path):
     try:
@@ -23,32 +17,26 @@ def generate_caption(image_path):
             print("HF_API_TOKEN missing")
             return "Caption service not configured"
 
-        API_URL = "https://router.huggingface.co/hf-inference/models/Salesforce/blip-image-captioning-base"
+        API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
 
         headers = {
-            "Authorization": f"Bearer {HF_API_TOKEN}",
-            "Content-Type": "application/json"
+            "Authorization": f"Bearer {HF_API_TOKEN}"
         }
 
-        # Convert image to base64
         with open(image_path, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
-
-        payload = {
-            "inputs": encoded_string
-        }
+            image_bytes = image_file.read()
 
         response = requests.post(
             API_URL,
             headers=headers,
-            json=payload,
+            data=image_bytes,
             timeout=60
         )
 
         print("HF Status Code:", response.status_code)
-        print("HF Raw Response:", response.text)
 
         if response.status_code != 200:
+            print(response.text)
             return "Caption service temporarily unavailable"
 
         result = response.json()
@@ -64,13 +52,12 @@ def generate_caption(image_path):
 
 
 # =====================================================
-# Translation
+# TRANSLATION
 # =====================================================
 
 def translate_text(text, language):
     try:
         translated = GoogleTranslator(source='auto', target=language).translate(text)
-        print("Translated Text:", translated)
         return translated
     except Exception as e:
         print("Translation error:", e)
@@ -78,7 +65,7 @@ def translate_text(text, language):
 
 
 # =====================================================
-# Text to Speech (Rate-limit Safe)
+# MULTILINGUAL TTS (Free Compatible Model)
 # =====================================================
 
 def text_to_speech(text, language='en'):
@@ -87,26 +74,19 @@ def text_to_speech(text, language='en'):
             print("HF_API_TOKEN missing for TTS")
             return None
 
-        # Map frontend language codes to MMS codes
         lang_map = {
             "en": "eng",
             "hi": "hin",
             "te": "tel",
             "zh": "zho",
-            "fr": "fra",
-            "de": "deu",
-            "es": "spa",
-            "ja": "jpn",
-            "ko": "kor"
         }
 
         mms_lang = lang_map.get(language, "eng")
 
-        TTS_API_URL = f"https://router.huggingface.co/hf-inference/models/facebook/mms-tts-{mms_lang}"
+        API_URL = f"https://api-inference.huggingface.co/models/facebook/mms-tts-{mms_lang}"
 
         headers = {
-            "Authorization": f"Bearer {HF_API_TOKEN}",
-            "Content-Type": "application/json"
+            "Authorization": f"Bearer {HF_API_TOKEN}"
         }
 
         payload = {
@@ -114,7 +94,7 @@ def text_to_speech(text, language='en'):
         }
 
         response = requests.post(
-            TTS_API_URL,
+            API_URL,
             headers=headers,
             json=payload,
             timeout=60
@@ -123,7 +103,7 @@ def text_to_speech(text, language='en'):
         print("TTS Status Code:", response.status_code)
 
         if response.status_code != 200:
-            print("TTS Error:", response.text)
+            print(response.text)
             return None
 
         audio_bytes = response.content
@@ -137,12 +117,8 @@ def text_to_speech(text, language='en'):
         with open(filepath, "wb") as f:
             f.write(audio_bytes)
 
-        print("TTS audio saved:", filepath)
-
         return f"audio/{filename}"
 
     except Exception as e:
         print("TTS error:", e)
         return None
-
-
