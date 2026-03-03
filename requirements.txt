@@ -10,4 +10,6 @@ psycopg2-binary==2.9.9
 huggingface_hub>=0.20.0
 gunicorn
 
+transformers
+torch
 
