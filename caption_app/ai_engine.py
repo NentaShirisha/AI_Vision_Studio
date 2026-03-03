@@ -1,12 +1,21 @@
 import os
 import uuid
 import requests
-import base64
 from django.conf import settings
 from deep_translator import GoogleTranslator
-from huggingface_hub import InferenceClient
+
+# =====================================================
+# CONFIG
+# =====================================================
 
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
+
+HF_HEADERS = {
+    "Authorization": f"Bearer {HF_API_TOKEN}"
+} if HF_API_TOKEN else {}
+
+REQUEST_TIMEOUT = 60  # seconds
+
 
 # =====================================================
 # IMAGE CAPTIONING
@@ -14,49 +23,41 @@ HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 
 def generate_caption(image_path):
     try:
+        print("Step 1: Generating caption...")
+
         if not HF_API_TOKEN:
             print("HF_API_TOKEN missing")
             return "Caption service not configured"
 
         model_name = "Salesforce/blip-image-captioning-base"
-        
-        # Use InferenceClient - don't specify model in init, pass it to the method
-        client = InferenceClient(token=HF_API_TOKEN)
-        
+        api_url = f"https://api-inference.huggingface.co/models/{model_name}"
+
         with open(image_path, "rb") as image_file:
             image_bytes = image_file.read()
-        
-        # Use image_to_text method with model parameter
-        result = client.image_to_text(image=image_bytes, model=model_name)
-        
-        print(f"Caption result type: {type(result)}, value: {result}")
-        
-        # Handle different response formats
+
+        response = requests.post(
+            api_url,
+            headers=HF_HEADERS,
+            data=image_bytes,
+            timeout=REQUEST_TIMEOUT
+        )
+
+        if response.status_code != 200:
+            print("HF Caption API Error:", response.text)
+            return "Error generating caption"
+
+        result = response.json()
+        print("HF Caption Response:", result)
+
         if isinstance(result, list) and len(result) > 0:
-            item = result[0]
-            if isinstance(item, dict) and "generated_text" in item:
-                return item["generated_text"]
-            elif isinstance(item, str):
-                return item
-        
-        if isinstance(result, dict):
-            if "generated_text" in result:
-                return result["generated_text"]
-            # Some models return the text directly in a dict
-            for key in ["text", "caption", "label"]:
-                if key in result:
-                    return result[key]
-        
-        if isinstance(result, str):
-            return result
+            return result[0].get("generated_text", "No caption generated")
 
         return "No caption generated"
 
     except Exception as e:
         import traceback
-        error_msg = str(e)
-        print(f"Caption error: {error_msg}")
-        print(f"Traceback: {traceback.format_exc()}")
+        print("Caption error:", str(e))
+        print(traceback.format_exc())
         return "Error generating caption"
 
 
@@ -66,21 +67,38 @@ def generate_caption(image_path):
 
 def translate_text(text, language):
     try:
-        translated = GoogleTranslator(source='auto', target=language).translate(text)
+        print(f"Step 2: Translating to {language}...")
+
+        if not text or "Error" in text:
+            return text
+
+        translated = GoogleTranslator(
+            source='auto',
+            target=language
+        ).translate(text)
+
+        print("Translated Text:", translated)
         return translated
+
     except Exception as e:
-        print("Translation error:", e)
+        print("Translation error:", str(e))
         return text
 
 
 # =====================================================
-# MULTILINGUAL TTS (Free Compatible Model)
+# MULTILINGUAL TTS
 # =====================================================
 
 def text_to_speech(text, language='en'):
     try:
+        print("Step 3: Generating audio...")
+
         if not HF_API_TOKEN:
             print("HF_API_TOKEN missing for TTS")
+            return None
+
+        if not text or "Error" in text:
+            print("Skipping TTS due to invalid text")
             return None
 
         lang_map = {
@@ -92,17 +110,27 @@ def text_to_speech(text, language='en'):
 
         mms_lang = lang_map.get(language, "eng")
         model_name = f"facebook/mms-tts-{mms_lang}"
+        api_url = f"https://api-inference.huggingface.co/models/{model_name}"
 
-        # Use InferenceClient - don't specify model in init, pass it to the method
-        client = InferenceClient(token=HF_API_TOKEN)
-        
-        # Use text_to_speech method with model parameter
-        audio_bytes = client.text_to_speech(text=text, model=model_name)
-        
-        print(f"TTS result type: {type(audio_bytes)}, length: {len(audio_bytes) if audio_bytes else 0}")
+        payload = {
+            "inputs": text
+        }
+
+        response = requests.post(
+            api_url,
+            headers=HF_HEADERS,
+            json=payload,
+            timeout=REQUEST_TIMEOUT
+        )
+
+        if response.status_code != 200:
+            print("HF TTS API Error:", response.text)
+            return None
+
+        audio_bytes = response.content
 
         if not audio_bytes:
-            print("TTS: No audio generated")
+            print("No audio generated")
             return None
 
         filename = f"audio_{uuid.uuid4()}.wav"
@@ -114,11 +142,12 @@ def text_to_speech(text, language='en'):
         with open(filepath, "wb") as f:
             f.write(audio_bytes)
 
+        print("Audio saved:", filename)
+
         return f"audio/{filename}"
 
     except Exception as e:
         import traceback
-        error_msg = str(e)
-        print(f"TTS error: {error_msg}")
-        print(f"Traceback: {traceback.format_exc()}")
+        print("TTS error:", str(e))
+        print(traceback.format_exc())
         return None
