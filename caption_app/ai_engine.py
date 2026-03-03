@@ -7,32 +7,33 @@ from deep_translator import GoogleTranslator
 from gtts import gTTS
 
 # =====================================================
-# HuggingFace Hosted BLIP Inference (Router Endpoint)
+# HuggingFace Free Inference API (Correct Endpoint)
 # =====================================================
 
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 
-API_URL = "https://router.huggingface.co/hf-inference/models/Salesforce/blip-image-captioning-base"
-
-HEADERS = {
-    "Authorization": f"Bearer {HF_API_TOKEN}",
-    "Content-Type": "application/octet-stream"
-}
+API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
 
 
 def generate_caption(image_path):
     """Generate image caption using HuggingFace hosted BLIP model."""
     try:
+        print("HF_API_TOKEN:", HF_API_TOKEN)
+
         if not HF_API_TOKEN:
-            print("HF_API_TOKEN is not configured")
+            print("HF_API_TOKEN is missing")
             return "Caption service not configured"
 
         with open(image_path, "rb") as f:
             image_bytes = f.read()
 
+        headers = {
+            "Authorization": f"Bearer {HF_API_TOKEN}"
+        }
+
         response = requests.post(
             API_URL,
-            headers=HEADERS,
+            headers=headers,
             data=image_bytes,
             timeout=60
         )
@@ -45,7 +46,8 @@ def generate_caption(image_path):
 
         result = response.json()
 
-        # Expected format: [{'generated_text': 'caption here'}]
+        # Expected response:
+        # [{"generated_text": "A person holding a cup"}]
         if isinstance(result, list) and "generated_text" in result[0]:
             caption = result[0]["generated_text"]
             print("Generated Caption:", caption)
@@ -78,8 +80,7 @@ def translate_text(text, language):
 
 def text_to_speech(text, language='en'):
     try:
-        # Prevent rapid-fire requests
-        time.sleep(1)
+        time.sleep(1)  # prevent rapid-fire requests
 
         filename = f"audio_{uuid.uuid4()}.mp3"
         tts = gTTS(text=text, lang=language)
