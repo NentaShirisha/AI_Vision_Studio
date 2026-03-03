@@ -20,44 +20,28 @@ def generate_caption(image_path):
 
         model_name = "Salesforce/blip-image-captioning-base"
         
-        # Try using InferenceClient first
-        try:
-            client = InferenceClient(token=HF_API_TOKEN)
-            with open(image_path, "rb") as image_file:
-                image_bytes = image_file.read()
-            
-            result = client.image_to_text(image=image_bytes, model=model_name)
-            
-            if isinstance(result, list) and len(result) > 0:
-                if isinstance(result[0], dict) and "generated_text" in result[0]:
-                    return result[0]["generated_text"]
-                elif isinstance(result[0], str):
-                    return result[0]
-            
-            if isinstance(result, str):
-                return result
-        except Exception as client_error:
-            print(f"InferenceClient failed, trying direct API: {client_error}")
-            # Fallback to direct API call
-            API_URL = f"https://api-inference.huggingface.co/models/{model_name}"
-            headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-            
-            with open(image_path, "rb") as image_file:
-                image_bytes = image_file.read()
-            
-            response = requests.post(API_URL, headers=headers, data=image_bytes, timeout=60)
-            
-            print(f"Direct API Status Code: {response.status_code}")
-            
-            if response.status_code != 200:
-                print(f"Direct API Error: {response.text}")
-                return "Caption service temporarily unavailable"
-            
-            result = response.json()
-            if isinstance(result, list) and "generated_text" in result[0]:
+        # Use InferenceClient with model specified
+        client = InferenceClient(model=model_name, token=HF_API_TOKEN)
+        
+        with open(image_path, "rb") as image_file:
+            image_bytes = image_file.read()
+        
+        # Use the post method for image-to-text
+        result = client.post(data=image_bytes)
+        
+        print(f"Caption result type: {type(result)}, value: {result}")
+        
+        if isinstance(result, list) and len(result) > 0:
+            if isinstance(result[0], dict) and "generated_text" in result[0]:
                 return result[0]["generated_text"]
-            
-            return "No caption generated"
+            elif isinstance(result[0], str):
+                return result[0]
+        
+        if isinstance(result, dict) and "generated_text" in result:
+            return result["generated_text"]
+        
+        if isinstance(result, str):
+            return result
 
         return "No caption generated"
 
@@ -102,29 +86,14 @@ def text_to_speech(text, language='en'):
         mms_lang = lang_map.get(language, "eng")
         model_name = f"facebook/mms-tts-{mms_lang}"
 
-        # Try using InferenceClient first
-        try:
-            client = InferenceClient(token=HF_API_TOKEN)
-            audio_bytes = client.text_to_speech(text=text, model=model_name)
-            
-            if not audio_bytes:
-                raise ValueError("No audio generated from InferenceClient")
-        except Exception as client_error:
-            print(f"InferenceClient failed, trying direct API: {client_error}")
-            # Fallback to direct API call
-            API_URL = f"https://api-inference.huggingface.co/models/{model_name}"
-            headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-            payload = {"inputs": text}
-            
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
-            
-            print(f"Direct API Status Code: {response.status_code}")
-            
-            if response.status_code != 200:
-                print(f"Direct API Error: {response.text}")
-                return None
-            
-            audio_bytes = response.content
+        # Use InferenceClient with model specified
+        client = InferenceClient(model=model_name, token=HF_API_TOKEN)
+        
+        # Use the post method for text-to-speech
+        payload = {"inputs": text}
+        audio_bytes = client.post(json=payload)
+        
+        print(f"TTS result type: {type(audio_bytes)}")
 
         if not audio_bytes:
             print("TTS: No audio generated")
