@@ -14,7 +14,9 @@ HF_HEADERS = {
     "Authorization": f"Bearer {HF_API_TOKEN}"
 } if HF_API_TOKEN else {}
 
-REQUEST_TIMEOUT = 60  # seconds
+HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
+
+REQUEST_TIMEOUT = 60
 
 
 # =====================================================
@@ -30,7 +32,7 @@ def generate_caption(image_path):
             return "Caption service not configured"
 
         model_name = "Salesforce/blip-image-captioning-base"
-        api_url = f"https://api-inference.huggingface.co/models/{model_name}"
+        api_url = f"{HF_BASE_URL}/{model_name}"
 
         with open(image_path, "rb") as image_file:
             image_bytes = image_file.read()
@@ -86,7 +88,7 @@ def translate_text(text, language):
 
 
 # =====================================================
-# MULTILINGUAL TTS
+# TEXT TO SPEECH
 # =====================================================
 
 def text_to_speech(text, language='en'):
@@ -110,7 +112,7 @@ def text_to_speech(text, language='en'):
 
         mms_lang = lang_map.get(language, "eng")
         model_name = f"facebook/mms-tts-{mms_lang}"
-        api_url = f"https://api-inference.huggingface.co/models/{model_name}"
+        api_url = f"{HF_BASE_URL}/{model_name}"
 
         payload = {
             "inputs": text
