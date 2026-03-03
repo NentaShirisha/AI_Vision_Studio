@@ -11,7 +11,7 @@ from gtts import gTTS
 
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 
-API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
+API_URL = "https://router.huggingface.co/hf-inference/models/Salesforce/blip-image-captioning-base"
 
 headers = {
     "Authorization": f"Bearer {HF_API_TOKEN}"
@@ -77,3 +77,4 @@ def text_to_speech(text, language='en'):
     except Exception as e:
         print("TTS error:", e)
         return None
+
