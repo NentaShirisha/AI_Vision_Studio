@@ -4,6 +4,7 @@ import requests
 import base64
 from django.conf import settings
 from deep_translator import GoogleTranslator
+from huggingface_hub import InferenceClient
 
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 
@@ -17,32 +18,26 @@ def generate_caption(image_path):
             print("HF_API_TOKEN missing")
             return "Caption service not configured"
 
-        API_URL = "https://router.huggingface.co/models/Salesforce/blip-image-captioning-base"
-
-        headers = {
-            "Authorization": f"Bearer {HF_API_TOKEN}"
-        }
+        # Use huggingface_hub InferenceClient which handles endpoint routing automatically
+        client = InferenceClient(
+            model="Salesforce/blip-image-captioning-base",
+            token=HF_API_TOKEN
+        )
 
         with open(image_path, "rb") as image_file:
             image_bytes = image_file.read()
 
-        response = requests.post(
-            API_URL,
-            headers=headers,
-            data=image_bytes,
-            timeout=60
-        )
+        # Use image_to_text method for image captioning
+        result = client.image_to_text(image_bytes)
 
-        print("HF Status Code:", response.status_code)
-
-        if response.status_code != 200:
-            print(response.text)
-            return "Caption service temporarily unavailable"
-
-        result = response.json()
-
-        if isinstance(result, list) and "generated_text" in result[0]:
-            return result[0]["generated_text"]
+        if isinstance(result, list) and len(result) > 0:
+            if isinstance(result[0], dict) and "generated_text" in result[0]:
+                return result[0]["generated_text"]
+            elif isinstance(result[0], str):
+                return result[0]
+        
+        if isinstance(result, str):
+            return result
 
         return "No caption generated"
 
@@ -82,31 +77,20 @@ def text_to_speech(text, language='en'):
         }
 
         mms_lang = lang_map.get(language, "eng")
+        model_name = f"facebook/mms-tts-{mms_lang}"
 
-        API_URL = f"https://router.huggingface.co/models/facebook/mms-tts-{mms_lang}"
-
-        headers = {
-            "Authorization": f"Bearer {HF_API_TOKEN}"
-        }
-
-        payload = {
-            "inputs": text
-        }
-
-        response = requests.post(
-            API_URL,
-            headers=headers,
-            json=payload,
-            timeout=60
+        # Use huggingface_hub InferenceClient which handles endpoint routing automatically
+        client = InferenceClient(
+            model=model_name,
+            token=HF_API_TOKEN
         )
 
-        print("TTS Status Code:", response.status_code)
+        # Use text_to_speech method for TTS
+        audio_bytes = client.text_to_speech(text)
 
-        if response.status_code != 200:
-            print(response.text)
+        if not audio_bytes:
+            print("TTS: No audio generated")
             return None
-
-        audio_bytes = response.content
 
         filename = f"audio_{uuid.uuid4()}.wav"
         media_audio_dir = os.path.join(settings.MEDIA_ROOT, 'audio')
