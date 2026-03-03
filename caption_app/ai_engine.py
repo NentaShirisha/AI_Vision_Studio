@@ -11,7 +11,7 @@ REQUEST_TIMEOUT = 60
 
 
 # =====================================================
-# IMAGE CAPTIONING
+# IMAGE CAPTIONING (ViT-GPT2)
 # =====================================================
 
 def generate_caption(image_path):
@@ -21,7 +21,8 @@ def generate_caption(image_path):
         if not HF_API_TOKEN:
             return "Caption service not configured"
 
-        model_name = "Salesforce/blip-image-captioning-base"
+        # ✅ Updated model
+        model_name = "nlpconnect/vit-gpt2-image-captioning"
         api_url = f"{HF_BASE_URL}/{model_name}"
 
         headers = {
