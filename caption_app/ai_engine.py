@@ -83,21 +83,66 @@ def translate_text(text, language):
 
 def text_to_speech(text, language='en'):
     try:
-        time.sleep(1)  # prevent rapid-fire requests
+        if not HF_API_TOKEN:
+            print("HF_API_TOKEN missing for TTS")
+            return None
 
-        filename = f"audio_{uuid.uuid4()}.mp3"
-        tts = gTTS(text=text, lang=language)
+        # Map frontend language codes to MMS codes
+        lang_map = {
+            "en": "eng",
+            "hi": "hin",
+            "te": "tel",
+            "zh": "zho",
+            "fr": "fra",
+            "de": "deu",
+            "es": "spa",
+            "ja": "jpn",
+            "ko": "kor"
+        }
 
+        mms_lang = lang_map.get(language, "eng")
+
+        TTS_API_URL = f"https://router.huggingface.co/hf-inference/models/facebook/mms-tts-{mms_lang}"
+
+        headers = {
+            "Authorization": f"Bearer {HF_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "inputs": text
+        }
+
+        response = requests.post(
+            TTS_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+
+        print("TTS Status Code:", response.status_code)
+
+        if response.status_code != 200:
+            print("TTS Error:", response.text)
+            return None
+
+        audio_bytes = response.content
+
+        filename = f"audio_{uuid.uuid4()}.wav"
         media_audio_dir = os.path.join(settings.MEDIA_ROOT, 'audio')
         os.makedirs(media_audio_dir, exist_ok=True)
 
         filepath = os.path.join(media_audio_dir, filename)
-        tts.save(filepath)
 
-        print("Audio saved:", filepath)
+        with open(filepath, "wb") as f:
+            f.write(audio_bytes)
+
+        print("TTS audio saved:", filepath)
+
         return f"audio/{filename}"
 
     except Exception as e:
         print("TTS error:", e)
         return None
+
 
