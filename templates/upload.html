@@ -162,7 +162,21 @@
             }
         })
             .then(async res => {
-                let data = await res.json();
+                const contentType = res.headers.get("Content-Type") || "";
+                let data;
+                try {
+                    if (contentType.includes("application/json")) {
+                        data = await res.json();
+                    } else {
+                        const text = await res.text();
+                        throw new Error(res.ok ? "Invalid response from server." : `Server error (${res.status}). Try again.`);
+                    }
+                } catch (e) {
+                    if (e instanceof SyntaxError || (e && e.message && e.message.includes("is not valid JSON"))) {
+                        throw new Error("Server error. The app may be overloaded or restarting. Please try again in a moment.");
+                    }
+                    throw e;
+                }
                 if (!res.ok) {
                     throw new Error(data.error || `HTTP error! status: ${res.status}`);
                 }
