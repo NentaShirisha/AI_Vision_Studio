@@ -8,10 +8,11 @@ services:
     buildCommand: |
       pip install torch --index-url https://download.pytorch.org/whl/cpu
       pip install -r requirements.txt
+      chmod +x render-start.sh
       python manage.py collectstatic --noinput
       python manage.py migrate
 
-    startCommand: gunicorn ai_vision_platform.wsgi:application --bind 0.0.0.0:$PORT
+    startCommand: bash render-start.sh
 
     envVars:
       - key: PYTHON_VERSION
