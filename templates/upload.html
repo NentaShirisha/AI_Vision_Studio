@@ -185,12 +185,17 @@
 
                     document.getElementById("caption").innerText = data.caption;
                     document.getElementById("translation").innerText = data.translation;
+                    let audioPlayer = document.getElementById("audioPlayer");
+                    let audioWrap = audioPlayer.closest('.mt-4') || audioPlayer.parentElement;
                     if (data.audio_url) {
                         console.log("Setting audio URL:", data.audio_url);
-                        document.getElementById("audioPlayer").src = data.audio_url;
-                        document.getElementById("audioPlayer").load(); // Force reload audio
+                        audioPlayer.src = data.audio_url;
+                        audioPlayer.load();
+                        if (audioWrap) audioWrap.classList.remove('d-none');
+                        audioPlayer.classList.remove('d-none');
                     } else {
-                        console.warn("No audio URL returned.");
+                        if (audioWrap) audioWrap.classList.add('d-none');
+                        audioPlayer.src = '';
                     }
                     btn.innerHTML = 'Generate AI Caption';
                     btn.disabled = false;
