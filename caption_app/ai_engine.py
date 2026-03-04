@@ -5,7 +5,7 @@ from django.conf import settings
 from deep_translator import GoogleTranslator
 
 # =====================================================
-# CONFIG
+# CONFIGURATION
 # =====================================================
 
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
@@ -14,7 +14,8 @@ HF_HEADERS = {
     "Authorization": f"Bearer {HF_API_TOKEN}"
 } if HF_API_TOKEN else {}
 
-HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
+# Correct HuggingFace Inference Endpoint
+HF_BASE_URL = "https://api-inference.huggingface.co/models"
 
 REQUEST_TIMEOUT = 60
 
@@ -43,6 +44,8 @@ def generate_caption(image_path):
             data=image_bytes,
             timeout=REQUEST_TIMEOUT
         )
+
+        print("Status Code:", response.status_code)
 
         if response.status_code != 200:
             print("HF Caption API Error:", response.text)
@@ -80,6 +83,7 @@ def translate_text(text, language):
         ).translate(text)
 
         print("Translated Text:", translated)
+
         return translated
 
     except Exception as e:
@@ -103,6 +107,7 @@ def text_to_speech(text, language='en'):
             print("Skipping TTS due to invalid text")
             return None
 
+        # Language mapping for MMS TTS
         lang_map = {
             "en": "eng",
             "hi": "hin",
@@ -111,6 +116,7 @@ def text_to_speech(text, language='en'):
         }
 
         mms_lang = lang_map.get(language, "eng")
+
         model_name = f"facebook/mms-tts-{mms_lang}"
         api_url = f"{HF_BASE_URL}/{model_name}"
 
@@ -125,6 +131,8 @@ def text_to_speech(text, language='en'):
             timeout=REQUEST_TIMEOUT
         )
 
+        print("TTS Status Code:", response.status_code)
+
         if response.status_code != 200:
             print("HF TTS API Error:", response.text)
             return None
@@ -136,7 +144,8 @@ def text_to_speech(text, language='en'):
             return None
 
         filename = f"audio_{uuid.uuid4()}.wav"
-        media_audio_dir = os.path.join(settings.MEDIA_ROOT, 'audio')
+
+        media_audio_dir = os.path.join(settings.MEDIA_ROOT, "audio")
         os.makedirs(media_audio_dir, exist_ok=True)
 
         filepath = os.path.join(media_audio_dir, filename)
