@@ -4,17 +4,11 @@ import requests
 from django.conf import settings
 from deep_translator import GoogleTranslator
 
-# =====================================================
-# CONFIG
-# =====================================================
-
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 
 HF_HEADERS = {
     "Authorization": f"Bearer {HF_API_TOKEN}"
 }
-
-HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
 
 REQUEST_TIMEOUT = 60
 
@@ -29,23 +23,16 @@ def generate_caption(image_path):
 
         print("Step 1: Generating caption...")
 
-        model = "Salesforce/blip-image-captioning-base"
-
-        api_url = f"https://router.huggingface.co/hf-inference/models/{model}"
+        api_url = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
 
         with open(image_path, "rb") as f:
             image_bytes = f.read()
 
-        headers = {
-            "Authorization": f"Bearer {HF_API_TOKEN}",
-            "Content-Type": "application/octet-stream"
-        }
-
         response = requests.post(
             api_url,
-            headers=headers,
+            headers=HF_HEADERS,
             data=image_bytes,
-            timeout=60
+            timeout=REQUEST_TIMEOUT
         )
 
         print("Status Code:", response.status_code)
@@ -58,7 +45,7 @@ def generate_caption(image_path):
 
         print("HF Caption Response:", result)
 
-        if isinstance(result, list):
+        if isinstance(result, list) and len(result) > 0:
             return result[0].get("generated_text", "No caption generated")
 
         return "No caption generated"
@@ -66,8 +53,8 @@ def generate_caption(image_path):
     except Exception as e:
 
         print("Caption Error:", str(e))
-
         return "Unable to generate caption"
+
 
 # =====================================================
 # TRANSLATION
@@ -77,7 +64,7 @@ def translate_text(text, language):
 
     try:
 
-        print("Step 2: Translating...")
+        print(f"Step 2: Translating to {language}...")
 
         if not text or "Unable" in text:
             return text
@@ -94,7 +81,6 @@ def translate_text(text, language):
     except Exception as e:
 
         print("Translation Error:", str(e))
-
         return text
 
 
@@ -122,7 +108,7 @@ def text_to_speech(text, language="en"):
 
         model = f"facebook/mms-tts-{mms_lang}"
 
-        api_url = f"{HF_BASE_URL}/{model}"
+        api_url = f"https://router.huggingface.co/hf-inference/models/{model}"
 
         payload = {
             "inputs": text
@@ -138,7 +124,7 @@ def text_to_speech(text, language="en"):
         print("TTS Status:", response.status_code)
 
         if response.status_code != 200:
-            print("TTS Error:", response.text)
+            print("HF TTS Error:", response.text)
             return None
 
         audio_bytes = response.content
@@ -159,7 +145,5 @@ def text_to_speech(text, language="en"):
 
     except Exception as e:
 
-        print("TTS Exception:", str(e))
-
+        print("TTS Error:", str(e))
         return None
-
