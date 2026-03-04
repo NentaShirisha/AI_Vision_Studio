@@ -1,0 +1,24 @@
+# Render Blueprint – deploy from repo
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: ai-vision-studio
+    runtime: python
+
+    buildCommand: |
+      pip install torch --index-url https://download.pytorch.org/whl/cpu
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+      python manage.py migrate
+
+    startCommand: gunicorn ai_vision_platform.wsgi:application
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: RENDER
+        value: "true"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      # RENDER_EXTERNAL_HOSTNAME is set automatically by Render
+      # Add DATABASE_URL if you attach a PostgreSQL database in the dashboard
