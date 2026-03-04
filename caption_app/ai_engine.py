@@ -14,8 +14,8 @@ HF_HEADERS = {
     "Authorization": f"Bearer {HF_API_TOKEN}"
 } if HF_API_TOKEN else {}
 
-# Correct HuggingFace Inference Endpoint
-HF_BASE_URL = "https://api-inference.huggingface.co/models"
+# New HuggingFace Router API (Updated 2026)
+HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
 
 REQUEST_TIMEOUT = 60
 
@@ -52,6 +52,7 @@ def generate_caption(image_path):
             return "Error generating caption"
 
         result = response.json()
+
         print("HF Caption Response:", result)
 
         if isinstance(result, list) and len(result) > 0:
@@ -107,7 +108,7 @@ def text_to_speech(text, language='en'):
             print("Skipping TTS due to invalid text")
             return None
 
-        # Language mapping for MMS TTS
+        # Language mapping
         lang_map = {
             "en": "eng",
             "hi": "hin",
