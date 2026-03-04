@@ -26,19 +26,27 @@ REQUEST_TIMEOUT = 60
 def generate_caption(image_path):
 
     try:
+
         print("Step 1: Generating caption...")
 
         model = "Salesforce/blip-image-captioning-base"
-        api_url = f"{HF_BASE_URL}/{model}"
+
+        api_url = f"https://router.huggingface.co/hf-inference/models/{model}"
 
         with open(image_path, "rb") as f:
+            image_bytes = f.read()
 
-            response = requests.post(
-                api_url,
-                headers=HF_HEADERS,
-                files={"file": f},
-                timeout=REQUEST_TIMEOUT
-            )
+        headers = {
+            "Authorization": f"Bearer {HF_API_TOKEN}",
+            "Content-Type": "application/octet-stream"
+        }
+
+        response = requests.post(
+            api_url,
+            headers=headers,
+            data=image_bytes,
+            timeout=60
+        )
 
         print("Status Code:", response.status_code)
 
@@ -50,15 +58,16 @@ def generate_caption(image_path):
 
         print("HF Caption Response:", result)
 
-        if isinstance(result, list) and len(result) > 0:
+        if isinstance(result, list):
             return result[0].get("generated_text", "No caption generated")
 
         return "No caption generated"
 
     except Exception as e:
-        print("Caption Exception:", str(e))
-        return "Unable to generate caption"
 
+        print("Caption Error:", str(e))
+
+        return "Unable to generate caption"
 
 # =====================================================
 # TRANSLATION
@@ -153,3 +162,4 @@ def text_to_speech(text, language="en"):
         print("TTS Exception:", str(e))
 
         return None
+
