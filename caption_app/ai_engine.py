@@ -187,19 +187,33 @@ def text_to_speech(text, language="en"):
 
         # gTTS uses ISO 639-1 codes (en, hi, te, fr, es, etc.)
         lang_clean = (language or "en")[:2].lower()
-        if lang_clean not in ("en", "hi", "te", "fr", "es", "ko", "zh", "ar", "de", "it", "ja", "pt", "ru"):
+        allowed_langs = ("en", "hi", "te", "fr", "es", "ko", "zh", "ar", "de", "it", "ja", "pt", "ru", "ta", "bn", "mr", "ur")
+        if lang_clean not in allowed_langs:
             lang_clean = "en"
+
+        # Limit length and strip to avoid gTTS errors
+        text_clean = (text or "")[:500].strip()
+        if not text_clean:
+            return None
 
         audio_dir = os.path.join(settings.MEDIA_ROOT, "audio")
         os.makedirs(audio_dir, exist_ok=True)
         filename = f"audio_{uuid.uuid4()}.mp3"
         filepath = os.path.join(audio_dir, filename)
 
-        tts = gTTS(text=text, lang=lang_clean, slow=False)
-        tts.save(filepath)
+        for try_lang in (lang_clean, "en"):
+            try:
+                tts = gTTS(text=text_clean, lang=try_lang, slow=False)
+                tts.save(filepath)
+                _safe_log("Audio saved: " + filename)
+                return f"audio/{filename}"
+            except Exception as e1:
+                _safe_log("TTS try lang " + try_lang + ": " + str(e1))
+                if try_lang == "en":
+                    raise
+                continue
 
-        _safe_log("Audio saved: " + filename)
-        return f"audio/{filename}"
+        return None
 
     except Exception as e:
         import traceback
