@@ -1,10 +1,10 @@
+```python
 import os
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.core.files.storage import default_storage
 
@@ -25,7 +25,9 @@ def index(request):
 # ======================================================
 
 def register(request):
+
     if request.method == "POST":
+
         form = UserCreationForm(request.POST)
 
         if form.is_valid():
@@ -63,6 +65,7 @@ def upload(request):
 
 @login_required
 def history(request):
+
     history = CaptionHistory.objects.filter(
         user=request.user
     ).order_by("-created_at")
@@ -83,7 +86,7 @@ def profile(request):
 # MAIN AI PROCESSING ENDPOINT
 # ======================================================
 
-@csrf_exempt
+@login_required
 def generate_caption_view(request):
 
     print("generate_caption_view called")
@@ -92,6 +95,7 @@ def generate_caption_view(request):
         return JsonResponse({"error": "Invalid request method"}, status=400)
 
     try:
+
         image = request.FILES.get("image")
         language = request.POST.get("language", "en")
 
@@ -106,16 +110,18 @@ def generate_caption_view(request):
         # ======================================================
 
         image_path = default_storage.save(f"uploads/{image.name}", image)
-        full_path = os.path.join(settings.MEDIA_ROOT, image_path)
 
-        print("Saved image to:", full_path)
+        full_image_path = os.path.join(settings.MEDIA_ROOT, image_path)
+
+        print("Saved image to:", full_image_path)
 
         # ======================================================
         # STEP 1 : CAPTION GENERATION
         # ======================================================
 
         print("Step 1: Generating caption...")
-        caption = generate_caption(full_path)
+
+        caption = generate_caption(full_image_path)
 
         print("Generated Caption:", caption)
 
@@ -124,6 +130,7 @@ def generate_caption_view(request):
         # ======================================================
 
         print("Step 2: Translating...")
+
         translated = translate_text(caption, language)
 
         print("Translated Text:", translated)
@@ -133,9 +140,20 @@ def generate_caption_view(request):
         # ======================================================
 
         print("Step 3: Generating audio...")
+
         audio_path = text_to_speech(translated, language)
 
         print("Audio Path:", audio_path)
+
+        # Construct audio URL safely
+        audio_url = None
+
+        if audio_path:
+            audio_url = settings.MEDIA_URL + audio_path
+
+            full_audio_path = os.path.join(settings.MEDIA_ROOT, audio_path)
+
+            print("Audio file exists:", os.path.exists(full_audio_path))
 
         # ======================================================
         # SAVE HISTORY
@@ -149,7 +167,7 @@ def generate_caption_view(request):
                 caption=caption,
                 language=language,
                 translated_text=translated,
-                audio_file=audio_path
+                audio_file=audio_path if audio_path else ""
             )
 
             print("History saved:", history.id)
@@ -161,8 +179,8 @@ def generate_caption_view(request):
         return JsonResponse({
             "caption": caption,
             "translation": translated,
-            "image_url": f"{settings.MEDIA_URL}{image_path}",
-            "audio_url": f"{settings.MEDIA_URL}{audio_path}" if audio_path else None
+            "image_url": settings.MEDIA_URL + image_path,
+            "audio_url": audio_url
         })
 
     except Exception as e:
@@ -184,26 +202,38 @@ def generate_caption_view(request):
 def debug_caption_test(request):
 
     try:
+
         from PIL import Image
 
         img = Image.new("RGB", (128, 128), color=(120, 180, 200))
 
         debug_dir = os.path.join(settings.MEDIA_ROOT, "debug")
+
         os.makedirs(debug_dir, exist_ok=True)
 
         path = os.path.join(debug_dir, "debug_test.jpg")
+
         img.save(path)
 
         caption = generate_caption(path)
+
         translated = translate_text(caption, "en")
+
         audio_path = text_to_speech(translated, "en")
+
+        audio_url = None
+
+        if audio_path:
+            audio_url = settings.MEDIA_URL + audio_path
 
         return JsonResponse({
             "caption": caption,
             "translation": translated,
-            "audio_url": f"{settings.MEDIA_URL}{audio_path}" if audio_path else None,
-            "image_url": f"{settings.MEDIA_URL}debug/debug_test.jpg"
+            "audio_url": audio_url,
+            "image_url": settings.MEDIA_URL + "debug/debug_test.jpg"
         })
 
     except Exception as e:
+
         return JsonResponse({"error": str(e)}, status=500)
+```
