@@ -1,4 +1,3 @@
-```python
 import os
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
@@ -237,3 +236,4 @@ def debug_caption_test(request):
 
         return JsonResponse({"error": str(e)}, status=500)
 ```
+
