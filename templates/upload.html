@@ -36,7 +36,6 @@
         </div>
 
         <div class="text-center">
-            <p class="text-muted small mb-2">Caption is generated automatically from your image — no prompt needed.</p>
             <button type="button" onclick="generateAICaption()" class="btn btn-lg glow-btn px-5">
                 Generate AI Caption
             </button>
@@ -198,13 +197,17 @@
                 let audioPlayer = document.getElementById("audioPlayer");
                 let audioWrap = audioPlayer.closest('.mt-4') || audioPlayer.parentElement;
                 if (data.audio_url) {
-                    audioPlayer.src = data.audio_url;
+                    var audioSrc = data.audio_url;
+                    if (audioSrc && !audioSrc.startsWith('http')) {
+                        audioSrc = window.location.origin + (audioSrc.startsWith('/') ? '' : '/') + audioSrc;
+                    }
+                    audioPlayer.src = audioSrc;
                     audioPlayer.load();
                     if (audioWrap) audioWrap.classList.remove('d-none');
                     audioPlayer.classList.remove('d-none');
                 } else {
                     if (audioWrap) audioWrap.classList.add('d-none');
-                    audioPlayer.src = '';
+                    audioPlayer.removeAttribute('src');
                 }
 
                 btn.innerHTML = 'Generate AI Caption';
