@@ -1,46 +1,53 @@
+```python
 from pathlib import Path
 import os
 import dj_database_url
 from dotenv import load_dotenv
 
+# ======================================================
+# BASE DIRECTORY
+# ======================================================
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 load_dotenv(BASE_DIR / ".env")
 
 
-# =================================
+# ======================================================
 # SECURITY SETTINGS
-# =================================
+# ======================================================
 
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
-    "unsafe-secret-key-change-this-in-render"
+    "unsafe-secret-key-change-this-in-production"
 )
 
-# Render environment detection
-DEBUG = os.environ.get("RENDER") != "true"
+# Detect if running on Render
+DEBUG = os.environ.get("RENDER") is None
 
-# Allow your Render URL (e.g. https://ai-vision-studio-xdac.onrender.com)
-RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "")
+RENDER_EXTERNAL_HOSTNAME = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     ".onrender.com",
-    ".render.com",
 ]
+
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
+
 CSRF_TRUSTED_ORIGINS = [
-    "https://ai-vision-studio-xdac.onrender.com",
     "https://*.onrender.com",
 ]
+
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
 
-# =================================
+# ======================================================
 # APPLICATIONS
-# =================================
+# ======================================================
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -49,18 +56,25 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # Third-party
     "rest_framework",
+
+    # Local apps
     "caption_app",
 ]
 
 
-# =================================
+# ======================================================
 # MIDDLEWARE
-# =================================
+# ======================================================
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+
+    # Static files in production
     "whitenoise.middleware.WhiteNoiseMiddleware",
+
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -70,12 +84,16 @@ MIDDLEWARE = [
 ]
 
 
+# ======================================================
+# URL CONFIGURATION
+# ======================================================
+
 ROOT_URLCONF = "ai_vision_platform.urls"
 
 
-# =================================
+# ======================================================
 # TEMPLATES
-# =================================
+# ======================================================
 
 TEMPLATES = [
     {
@@ -94,12 +112,16 @@ TEMPLATES = [
 ]
 
 
+# ======================================================
+# WSGI
+# ======================================================
+
 WSGI_APPLICATION = "ai_vision_platform.wsgi.application"
 
 
-# =================================
-# DATABASE (RENDER SAFE)
-# =================================
+# ======================================================
+# DATABASE
+# ======================================================
 
 DATABASES = {
     "default": dj_database_url.config(
@@ -109,9 +131,9 @@ DATABASES = {
 }
 
 
-# =================================
+# ======================================================
 # PASSWORD VALIDATION
-# =================================
+# ======================================================
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -121,43 +143,50 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# =================================
+# ======================================================
 # INTERNATIONALIZATION
-# =================================
+# ======================================================
 
 LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "UTC"
 
 USE_I18N = True
+
 USE_TZ = True
 
 
-# =================================
+# ======================================================
 # STATIC FILES (WHITENOISE)
-# =================================
+# ======================================================
 
 STATIC_URL = "/static/"
+
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 
-# =================================
-# MEDIA FILES
-# =================================
+# ======================================================
+# MEDIA FILES (UPLOADS + GENERATED AUDIO)
+# ======================================================
 
 MEDIA_URL = "/media/"
+
 MEDIA_ROOT = BASE_DIR / "media"
 
 
-# =================================
+# ======================================================
 # AUTH SETTINGS
-# =================================
+# ======================================================
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -165,12 +194,19 @@ LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
 
 
-# =================================
+# ======================================================
 # PRODUCTION SECURITY
-# =================================
+# ======================================================
 
 if not DEBUG:
+
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
     SECURE_BROWSER_XSS_FILTER = True
+
     SECURE_CONTENT_TYPE_NOSNIFF = True
+
     SESSION_COOKIE_SECURE = True
+
     CSRF_COOKIE_SECURE = True
+```
