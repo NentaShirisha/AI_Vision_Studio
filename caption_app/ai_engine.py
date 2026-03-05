@@ -4,17 +4,21 @@ import requests
 from django.conf import settings
 from deep_translator import GoogleTranslator
 
-HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
+# =====================================================
+# CONFIGURATION
+# =====================================================
+
+HF_API_TOKEN = os.getenv("HF_API_TOKEN", "")
 
 HF_HEADERS = {
     "Authorization": f"Bearer {HF_API_TOKEN}"
 }
 
-REQUEST_TIMEOUT = 60
+REQUEST_TIMEOUT = 120
 
 
 # =====================================================
-# IMAGE CAPTIONING
+# IMAGE CAPTIONING (BLIP MODEL)
 # =====================================================
 
 def generate_caption(image_path):
@@ -23,7 +27,7 @@ def generate_caption(image_path):
 
         print("Step 1: Generating caption...")
 
-        api_url = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
+        api_url = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large"
 
         with open(image_path, "rb") as f:
             image_bytes = f.read()
@@ -45,8 +49,16 @@ def generate_caption(image_path):
 
         print("HF Caption Response:", result)
 
+        # Model loading case
+        if isinstance(result, dict) and result.get("error"):
+            print("Model loading or API error:", result)
+            return "Model is loading. Try again."
+
         if isinstance(result, list) and len(result) > 0:
-            return result[0].get("generated_text", "No caption generated")
+            caption = result[0].get("generated_text", "")
+
+            if caption:
+                return caption
 
         return "No caption generated"
 
@@ -85,7 +97,7 @@ def translate_text(text, language):
 
 
 # =====================================================
-# TEXT TO SPEECH
+# TEXT TO SPEECH (HuggingFace MMS TTS)
 # =====================================================
 
 def text_to_speech(text, language="en"):
@@ -98,6 +110,7 @@ def text_to_speech(text, language="en"):
             print("Skipping TTS")
             return None
 
+        # Language mapping
         lang_map = {
             "en": "eng",
             "hi": "hin",
@@ -108,7 +121,7 @@ def text_to_speech(text, language="en"):
 
         model = f"facebook/mms-tts-{mms_lang}"
 
-        api_url = f"https://router.huggingface.co/hf-inference/models/{model}"
+        api_url = f"https://api-inference.huggingface.co/models/{model}"
 
         payload = {
             "inputs": text
