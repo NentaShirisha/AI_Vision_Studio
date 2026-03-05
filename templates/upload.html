@@ -36,6 +36,7 @@
         </div>
 
         <div class="text-center">
+            <p class="text-muted small mb-2">Caption is generated automatically from your image — no prompt needed.</p>
             <button type="button" onclick="generateAICaption()" class="btn btn-lg glow-btn px-5">
                 Generate AI Caption
             </button>
@@ -188,38 +189,31 @@
                 progress.style.width = '100%';
                 btn.innerHTML = '<i class="bi bi-check-circle"></i> Complete!';
 
-                setTimeout(() => {
+                let resSec = document.getElementById("resultSection");
+                resSec.classList.remove("d-none");
+
+                document.getElementById("caption").innerText = data.caption != null ? String(data.caption) : '';
+                document.getElementById("translation").innerText = data.translation != null ? String(data.translation) : '';
+
+                let audioPlayer = document.getElementById("audioPlayer");
+                let audioWrap = audioPlayer.closest('.mt-4') || audioPlayer.parentElement;
+                if (data.audio_url) {
+                    audioPlayer.src = data.audio_url;
+                    audioPlayer.load();
+                    if (audioWrap) audioWrap.classList.remove('d-none');
+                    audioPlayer.classList.remove('d-none');
+                } else {
+                    if (audioWrap) audioWrap.classList.add('d-none');
+                    audioPlayer.src = '';
+                }
+
+                btn.innerHTML = 'Generate AI Caption';
+                btn.disabled = false;
+
+                setTimeout(function () {
                     progressBar.classList.add('d-none');
-                    // Ensure result section is visible
-                    let resSec = document.getElementById("resultSection");
-                    if (resSec) {
-                        console.log("Un-hiding resultSection...");
-                        resSec.classList.remove("d-none");
-                    }
-
-                    document.getElementById("caption").innerText = data.caption;
-                    document.getElementById("translation").innerText = data.translation;
-                    let audioPlayer = document.getElementById("audioPlayer");
-                    let audioWrap = audioPlayer.closest('.mt-4') || audioPlayer.parentElement;
-                    if (data.audio_url) {
-                        console.log("Setting audio URL:", data.audio_url);
-                        audioPlayer.src = data.audio_url;
-                        audioPlayer.load();
-                        if (audioWrap) audioWrap.classList.remove('d-none');
-                        audioPlayer.classList.remove('d-none');
-                    } else {
-                        if (audioWrap) audioWrap.classList.add('d-none');
-                        audioPlayer.src = '';
-                    }
-                    btn.innerHTML = 'Generate AI Caption';
-                    btn.disabled = false;
-
-                    // Scroll to results
-                    if (resSec) {
-                        console.log("Scrolling to results...");
-                        resSec.scrollIntoView({ behavior: 'smooth' });
-                    }
-                }, 500);
+                    resSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 400);
             })
             .catch(err => {
                 clearInterval(progressInterval);
