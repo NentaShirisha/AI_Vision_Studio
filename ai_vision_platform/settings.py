@@ -1,4 +1,3 @@
-```python
 from pathlib import Path
 import os
 import dj_database_url
@@ -209,4 +208,4 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
 
     CSRF_COOKIE_SECURE = True
-```
+
