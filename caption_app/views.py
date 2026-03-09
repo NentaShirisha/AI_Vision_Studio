@@ -145,15 +145,16 @@ def generate_caption_view(request):
         print("Audio Path:", audio_path)
 
         # Construct audio URL safely
-        audio_url = None
+       audio_url = None
 
-        if audio_path:
-            audio_url = settings.MEDIA_URL + audio_path
+       if audio_path:
 
             full_audio_path = os.path.join(settings.MEDIA_ROOT, audio_path)
 
             print("Audio file exists:", os.path.exists(full_audio_path))
 
+    # build absolute URL
+            audio_url = request.build_absolute_uri(settings.MEDIA_URL + audio_path)
         # ======================================================
         # SAVE HISTORY
         # ======================================================
@@ -235,5 +236,6 @@ def debug_caption_test(request):
     except Exception as e:
 
         return JsonResponse({"error": str(e)}, status=500)
+
 
 
