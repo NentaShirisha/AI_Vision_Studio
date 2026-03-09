@@ -31,6 +31,7 @@ CAPTION_MODEL = "Salesforce/blip-image-captioning-base"
 # =====================================================
 
 def _safe_log(msg):
+"""Print safely even if terminal encoding fails"""
 try:
 print(msg)
 except UnicodeEncodeError:
@@ -60,15 +61,14 @@ return _caption_processor, _caption_model
 
 # =====================================================
 
-# IMAGE CAPTION VIA HF TOKEN (OPTIONAL)
+# CAPTION VIA HF TOKEN (OPTIONAL)
 
 # =====================================================
 
 def _caption_via_hf_token(image_path):
-
-```
 import base64
 
+```
 token = os.environ.get("HF_API_TOKEN") or os.environ.get("HF_TOKEN")
 
 if not token:
@@ -81,7 +81,7 @@ if not url:
 try:
 
     with open(image_path, "rb") as f:
-        b64 = base64.standard_b64encode(f.read()).decode("ascii")
+        b64 = base64.b64encode(f.read()).decode("ascii")
 
     ext = image_path.lower()
 
@@ -99,14 +99,8 @@ try:
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "text",
-                        "text": "Describe this image in one short sentence like a caption."
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime};base64,{b64}"}
-                    }
+                    {"type": "text", "text": "Describe this image in one short caption."},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
                 ]
             }
         ]
@@ -114,7 +108,10 @@ try:
 
     r = requests.post(
         url,
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        },
         json=payload,
         timeout=REQUEST_TIMEOUT
     )
@@ -130,7 +127,7 @@ try:
 
     caption = (choices[0].get("message") or {}).get("content") or ""
 
-    return caption.strip() or None
+    return caption.strip()
 
 except Exception:
     return None
@@ -138,7 +135,7 @@ except Exception:
 
 # =====================================================
 
-# CAPTION GENERATION
+# IMAGE CAPTION GENERATION
 
 # =====================================================
 
@@ -152,7 +149,6 @@ try:
     caption = _caption_via_hf_token(image_path)
 
     if caption:
-        _safe_log("HF Caption Response: " + caption)
         return caption
 
     from PIL import Image
@@ -167,10 +163,7 @@ try:
 
     caption = processor.decode(out[0], skip_special_tokens=True).strip()
 
-    if caption:
-        return caption
-
-    return "No caption generated"
+    return caption or "No caption generated"
 
 except Exception as e:
 
@@ -193,7 +186,7 @@ def translate_text(text, language):
 ```
 try:
 
-    print(f"Step 2: Translating to {language}...")
+    print(f"Step 2: Translating to {language}")
 
     if not text or "Error" in text:
         return text
@@ -202,8 +195,6 @@ try:
         source="auto",
         target=language
     ).translate(text)
-
-    print("Translated Text:", translated)
 
     return translated
 
@@ -225,7 +216,7 @@ def text_to_speech(text, language="en"):
 ```
 try:
 
-    _safe_log("Step 3: Generating audio...")
+    _safe_log("Step 3: Generating audio")
 
     if not text or "Error" in text:
         return None
@@ -235,8 +226,8 @@ try:
     lang_clean = (language or "en")[:2].lower()
 
     allowed_langs = (
-        "en","hi","te","fr","es","ko","zh","ar","de",
-        "it","ja","pt","ru","ta","bn","mr","ur"
+        "en","hi","te","fr","es","ko","zh","ar",
+        "de","it","ja","pt","ru","ta","bn","mr","ur"
     )
 
     if lang_clean not in allowed_langs:
@@ -261,24 +252,23 @@ try:
 
         tts.save(filepath)
 
-        # ensure file is written
         time.sleep(0.3)
 
         if os.path.exists(filepath):
 
-            _safe_log("Audio saved successfully: " + filepath)
+            _safe_log("Audio saved: " + filepath)
 
             return f"audio/{filename}"
 
         else:
 
-            _safe_log("Audio file missing after save")
+            _safe_log("Audio file missing")
 
             return None
 
     except Exception as e:
 
-        _safe_log("TTS generation failed: " + str(e))
+        _safe_log("TTS error: " + str(e))
 
         return None
 
@@ -286,7 +276,7 @@ except Exception as e:
 
     import traceback
 
-    _safe_log("TTS error: " + str(e))
+    _safe_log("TTS crash: " + str(e))
     _safe_log(traceback.format_exc())
 
     return None
