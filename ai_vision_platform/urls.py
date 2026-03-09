@@ -8,6 +8,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from caption_app import views
 
+
 urlpatterns = [
 
     path("admin/", admin.site.urls),
@@ -16,12 +17,12 @@ urlpatterns = [
     path("accounts/", include("django.contrib.auth.urls")),
     path("accounts/profile/", views.profile, name="accounts_profile"),
 
-    # Main application routes
+    # Main application
     path("", include("caption_app.urls")),
 
-    # API routes
-    path("api/", include("caption_app.urls")),
 ]
 
-# Serve media files (important for Render)
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# MEDIA FILES (for development)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
