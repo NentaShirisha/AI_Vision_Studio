@@ -1,6 +1,5 @@
 import os
 import uuid
-import time
 import requests
 from django.conf import settings
 from deep_translator import GoogleTranslator
@@ -19,7 +18,10 @@ HF_HEADERS = {
 
 HF_INFERENCE_API_URL = "https://api-inference.huggingface.co/models"
 HF_BASE_URL = "https://router.huggingface.co/hf-inference/models"
-HF_INFERENCE_CHAT_URL = (os.environ.get("HF_INFERENCE_CHAT_URL") or "").strip() or None
+
+HF_INFERENCE_CHAT_URL = (
+os.environ.get("HF_INFERENCE_CHAT_URL") or ""
+).strip() or None
 
 REQUEST_TIMEOUT = 60
 CAPTION_MODEL = "Salesforce/blip-image-captioning-base"
@@ -31,15 +33,18 @@ CAPTION_MODEL = "Salesforce/blip-image-captioning-base"
 # =====================================================
 
 def _safe_log(msg):
-"""Print safely even if terminal encoding fails"""
+"""Print without raising Unicode console errors."""
 try:
 print(msg)
 except UnicodeEncodeError:
-print(msg.encode("utf-8", errors="replace").decode("ascii", errors="replace"))
+print(
+msg.encode("utf-8", errors="replace")
+.decode("ascii", errors="replace")
+)
 
 # =====================================================
 
-# LAZY LOAD BLIP MODEL
+# BLIP MODEL LAZY LOAD
 
 # =====================================================
 
@@ -54,21 +59,24 @@ if _caption_model is None:
     from transformers import BlipProcessor, BlipForConditionalGeneration
 
     _caption_processor = BlipProcessor.from_pretrained(CAPTION_MODEL)
-    _caption_model = BlipForConditionalGeneration.from_pretrained(CAPTION_MODEL)
+    _caption_model = BlipForConditionalGeneration.from_pretrained(
+        CAPTION_MODEL
+    )
 
 return _caption_processor, _caption_model
 ```
 
 # =====================================================
 
-# CAPTION VIA HF TOKEN (OPTIONAL)
+# HF TOKEN IMAGE CAPTION
 
 # =====================================================
 
 def _caption_via_hf_token(image_path):
-import base64
 
 ```
+import base64
+
 token = os.environ.get("HF_API_TOKEN") or os.environ.get("HF_TOKEN")
 
 if not token:
@@ -99,8 +107,16 @@ try:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Describe this image in one short caption."},
-                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
+                    {
+                        "type": "text",
+                        "text": "Describe this image in one short caption."
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{mime};base64,{b64}"
+                        }
+                    }
                 ]
             }
         ]
@@ -135,7 +151,7 @@ except Exception:
 
 # =====================================================
 
-# IMAGE CAPTION GENERATION
+# CAPTION GENERATION
 
 # =====================================================
 
@@ -144,7 +160,7 @@ def generate_caption(image_path):
 ```
 try:
 
-    _safe_log("Step 1: Generating caption...")
+    _safe_log("Step 1: Generating caption")
 
     caption = _caption_via_hf_token(image_path)
 
@@ -161,7 +177,10 @@ try:
 
     out = model.generate(**inputs)
 
-    caption = processor.decode(out[0], skip_special_tokens=True).strip()
+    caption = processor.decode(
+        out[0],
+        skip_special_tokens=True
+    ).strip()
 
     return caption or "No caption generated"
 
@@ -195,6 +214,8 @@ try:
         source="auto",
         target=language
     ).translate(text)
+
+    print("Translated:", translated)
 
     return translated
 
@@ -248,23 +269,17 @@ try:
 
     try:
 
-        tts = gTTS(text=text_clean, lang=lang_clean, slow=False)
+        tts = gTTS(
+            text=text_clean,
+            lang=lang_clean,
+            slow=False
+        )
 
         tts.save(filepath)
 
-        time.sleep(0.3)
+        _safe_log("Audio saved: " + filepath)
 
-        if os.path.exists(filepath):
-
-            _safe_log("Audio saved: " + filepath)
-
-            return f"audio/{filename}"
-
-        else:
-
-            _safe_log("Audio file missing")
-
-            return None
+        return f"audio/{filename}"
 
     except Exception as e:
 
